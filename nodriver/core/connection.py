@@ -496,23 +496,19 @@ class Connection(metaclass=CantTouchThis):
 
         if getattr(self, "_prep_headless_done", None):
             return
-        response, error = await self._send_oneshot(
-            cdp.runtime.evaluate(
-                expression="navigator.userAgent",
-                user_gesture=True,
-                await_promise=True,
-                return_by_value=True,
-                allow_unsafe_eval_blocked_by_csp=True,
-            )
+        response = await self._send_oneshot(
+            cdp.browser.get_version()
         )
-        if response and response.value:
-            ua = response.value
+        if response:
             await self._send_oneshot(
                 cdp.network.set_user_agent_override(
-                    user_agent=ua.replace("Headless", ""),
+                    user_agent=response[3].replace("Headless", ""),
                 )
             )
-        setattr(self, "_prep_headless_done", True)
+            setattr(self, "_prep_headless_done", True)
+            return
+
+        raise Exception("could not find Headless in user agent string")
 
     async def _prepare_expert(self):
         if getattr(self, "_prep_expert_done", None):
